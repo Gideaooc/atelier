@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f6f7f5;
+  --foreground: #152238;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --border: #dbe2ea;
+  --primary: #1769e0;
+  --primary-dark: #0f55bf;
+  --primary-soft: #eaf2ff;
+  --muted: #667085;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: Inter, Roboto, "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border);
+  min-width: 0;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Inter, Roboto, "Segoe UI", Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+a,
+input,
+textarea,
+select { -webkit-tap-highlight-color: transparent; }
+
+button,
+a {
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease,
+    box-shadow 150ms ease, transform 150ms ease;
+}
+
+button:not(:disabled), a { cursor: pointer; }
+input, textarea, select { max-width: 100%; font: inherit; }
+
+::selection { background: #d8e8ff; color: #0d3f8c; }
+
+.app-scrollbar::-webkit-scrollbar { width: 7px; height: 7px; }
+.app-scrollbar::-webkit-scrollbar-thumb { background: #bcc7d3; border-radius: 999px; }
+.app-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+.data-line:hover { background: #f8fbff; }
+
+.inline-cell {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #b9c9dd;
+  border-radius: 7px;
+  background: #fff;
+  padding: 7px 9px;
+  color: #152238;
+  outline: none;
+}
+
+.inline-cell:focus {
+  border-color: #1769e0;
+  box-shadow: 0 0 0 3px rgba(23, 105, 224, 0.13);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.72;
+}
+
+@media (max-width: 640px) {
+  body { font-size: 13px; }
+}
