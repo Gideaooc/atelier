@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   Settings,
+  ScrollText,
   UsersRound,
   X,
 } from "lucide-react";
@@ -63,6 +64,13 @@ const navigation: NavigationItem[] = [
     description: "Contas e permissões",
     icon: UsersRound,
     areas: ["users.list", "users.form", "users.permissions"],
+  },
+  {
+    href: "/app/auditoria",
+    label: "Auditoria",
+    description: "Ações realizadas",
+    icon: ScrollText,
+    areas: ["audit.logs"],
   },
 ];
 
@@ -226,7 +234,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <span className="hidden rounded-[6px] border border-[#cdd9e8] bg-[#f7faff] px-2.5 py-1 text-xs text-[#52657b] md:inline-flex">
-              Demonstração local
+              Demonstração auditável
             </span>
             <button type="button" className="grid size-9 place-items-center rounded-[7px] text-[#667085] hover:bg-[#eef4fb] hover:text-[#0f55bf]" title="Configurações da demonstração" aria-label="Configurações">
               <Settings className="size-4" />

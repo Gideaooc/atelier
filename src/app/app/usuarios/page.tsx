@@ -36,6 +36,7 @@ function PermissionMatrix({
   disabled?: boolean;
 }) {
   function toggle(area: PermissionArea, column: "view" | "edit", checked: boolean) {
+    if (area === "audit.logs" && column === "edit") return;
     const next = clonePermissions(permissions);
     if (column === "view") {
       next[area] = { view: checked, edit: checked ? next[area].edit : false };
@@ -48,6 +49,7 @@ function PermissionMatrix({
   function toggleMenu(menuIndex: number, column: "view" | "edit", checked: boolean) {
     const next = clonePermissions(permissions);
     for (const region of permissionMenus[menuIndex].regions) {
+      if (column === "edit" && region.readOnly) continue;
       if (column === "view") {
         next[region.key] = { view: checked, edit: checked ? next[region.key].edit : false };
       } else {
@@ -61,7 +63,8 @@ function PermissionMatrix({
     <div className="space-y-3">
       {permissionMenus.map((menu, menuIndex) => {
         const allView = menu.regions.every((region) => permissions[region.key].view);
-        const allEdit = menu.regions.every((region) => permissions[region.key].edit);
+        const editableRegions = menu.regions.filter((region) => !region.readOnly);
+        const allEdit = editableRegions.length > 0 && editableRegions.every((region) => permissions[region.key].edit);
         return (
           <section key={menu.key} className="overflow-hidden rounded-[10px] border border-[#d5dfec] bg-white">
             <div className="grid gap-3 border-b border-[#dbe5f2] bg-[#f3f7fd] px-4 py-3 md:grid-cols-[minmax(0,1fr)_110px_110px] md:items-center">
@@ -74,7 +77,7 @@ function PermissionMatrix({
                 <span className="text-xs font-medium text-[#52657b]">Visualizar tudo</span>
               </div>
               <div className="flex items-center gap-2 md:justify-center">
-                <Checkbox checked={allEdit} onChange={(checked) => toggleMenu(menuIndex, "edit", checked)} disabled={disabled} label={`Editar todas as regiões de ${menu.label}`} />
+                <Checkbox checked={allEdit} onChange={(checked) => toggleMenu(menuIndex, "edit", checked)} disabled={disabled || editableRegions.length === 0} label={`Editar todas as regiões de ${menu.label}`} />
                 <span className="text-xs font-medium text-[#52657b]">Editar tudo</span>
               </div>
             </div>
@@ -87,7 +90,7 @@ function PermissionMatrix({
               <div key={region.key} className="grid gap-3 border-t border-[#edf1f5] px-4 py-3 first:border-t-0 md:grid-cols-[minmax(0,1fr)_100px_100px] md:items-center">
                 <div><p className="text-sm font-medium text-[#152238]">{region.label}</p><p className="mt-0.5 text-[11px] text-[#667085]">{region.description}</p></div>
                 <div className="flex items-center gap-2 md:justify-center"><Checkbox checked={permissions[region.key].view} onChange={(checked) => toggle(region.key, "view", checked)} disabled={disabled} label={`Visualizar ${region.label}`} /><span className="text-xs text-[#667085] md:hidden">Visualizar</span></div>
-                <div className="flex items-center gap-2 md:justify-center"><Checkbox checked={permissions[region.key].edit} onChange={(checked) => toggle(region.key, "edit", checked)} disabled={disabled} label={`Editar ${region.label}`} /><span className="text-xs text-[#667085] md:hidden">Editar</span></div>
+                <div className="flex items-center gap-2 md:justify-center"><Checkbox checked={permissions[region.key].edit} onChange={(checked) => toggle(region.key, "edit", checked)} disabled={disabled || region.readOnly} label={`Editar ${region.label}`} /><span className="text-xs text-[#667085] md:hidden">Editar</span></div>
               </div>
             ))}
           </section>

@@ -24,6 +24,12 @@ import {
   getOperationProgress,
   withUpdatedBookletStatus,
 } from "@/lib/production";
+import {
+  appendExplicitAudit,
+  deriveAuditLogs,
+  MAX_DEMO_AUDIT_LOGS,
+  migrateProductionState,
+} from "@/lib/audit";
 
 const STORAGE_KEY = "controle-producao-terceirizada:v5";
 const SESSION_KEY = "controle-producao-terceirizada:session:v5";
@@ -117,7 +123,10 @@ function normalizePermissions(permissions: PermissionMap): PermissionMap {
   return Object.fromEntries(
     Object.entries(permissions).map(([key, value]) => [
       key,
-      { view: Boolean(value.view || value.edit), edit: Boolean(value.edit) },
+      {
+        view: Boolean(value.view || value.edit),
+        edit: key === "audit.logs" ? false : Boolean(value.edit),
+      },
     ]),
   ) as PermissionMap;
 }
@@ -128,16 +137,32 @@ export function ProductionDataProvider({ children }: { children: ReactNode }) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
-  const commit = useCallback((nextState: ProductionState) => {
-    stateRef.current = nextState;
-    setState(nextState);
-  }, []);
+  const commit = useCallback(
+    (nextState: ProductionState, options?: { skipAuditDiff?: boolean }) => {
+      const previousState = stateRef.current;
+      const auditLogs = options?.skipAuditDiff
+        ? []
+        : deriveAuditLogs(previousState, nextState, currentUserId);
+      const auditedState = auditLogs.length
+        ? {
+            ...nextState,
+            auditLogs: [...auditLogs, ...(nextState.auditLogs ?? [])].slice(
+              0,
+              MAX_DEMO_AUDIT_LOGS,
+            ),
+          }
+        : nextState;
+      stateRef.current = auditedState;
+      setState(auditedState);
+    },
+    [currentUserId],
+  );
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved) as ProductionState;
+        const parsed = migrateProductionState(JSON.parse(saved) as ProductionState);
         stateRef.current = parsed;
         setState(parsed);
       } catch {
@@ -158,21 +183,47 @@ export function ProductionDataProvider({ children }: { children: ReactNode }) {
     return user?.active ? user : null;
   }, [currentUserId, state.users]);
 
-  const login = useCallback((username: string, password: string) => {
-    const normalized = normalizeUsername(username);
-    const user = stateRef.current.users.find(
-      (item) => item.username === normalized && item.password === password,
-    );
-    if (!user) throw new Error("Usuário ou senha inválidos.");
-    if (!user.active) throw new Error("Esta conta está desativada.");
-    setCurrentUserId(user.id);
-    window.localStorage.setItem(SESSION_KEY, user.id);
-  }, []);
+  const login = useCallback(
+    (username: string, password: string) => {
+      const normalized = normalizeUsername(username);
+      const user = stateRef.current.users.find(
+        (item) => item.username === normalized && item.password === password,
+      );
+      if (!user) throw new Error("Usuário ou senha inválidos.");
+      if (!user.active) throw new Error("Esta conta está desativada.");
+      const nextState = appendExplicitAudit(stateRef.current, user.id, {
+        action: "LOGIN",
+        module: "AUTH",
+        entityType: "session",
+        entityId: user.id,
+        entityLabel: user.name,
+        description: `${user.name} entrou no sistema.`,
+        after: { username: user.username },
+      });
+      commit(nextState, { skipAuditDiff: true });
+      setCurrentUserId(user.id);
+      window.localStorage.setItem(SESSION_KEY, user.id);
+    },
+    [commit],
+  );
 
   const logout = useCallback(() => {
+    const user = stateRef.current.users.find((item) => item.id === currentUserId);
+    if (user) {
+      const nextState = appendExplicitAudit(stateRef.current, user.id, {
+        action: "LOGOUT",
+        module: "AUTH",
+        entityType: "session",
+        entityId: user.id,
+        entityLabel: user.name,
+        description: `${user.name} saiu do sistema.`,
+        before: { username: user.username },
+      });
+      commit(nextState, { skipAuditDiff: true });
+    }
     setCurrentUserId(null);
     window.localStorage.removeItem(SESSION_KEY);
-  }, []);
+  }, [commit, currentUserId]);
 
   const hasAccess = useCallback(
     (area: PermissionArea, mode: AccessMode = "view") => {
@@ -670,10 +721,21 @@ export function ProductionDataProvider({ children }: { children: ReactNode }) {
   );
 
   const resetDemo = useCallback(() => {
-    commit(initialProductionState);
+    const actorId = currentUserId ?? "user-admin";
+    const nextState = appendExplicitAudit(initialProductionState, actorId, {
+      action: "RESET",
+      module: "SYSTEM",
+      entityType: "demo",
+      entityId: null,
+      entityLabel: "Ambiente de demonstração",
+      description: "Restaurou todos os dados da demonstração para o estado inicial.",
+      before: { auditLogsPreserved: false },
+      after: { version: "0.6.0" },
+    });
+    commit(nextState, { skipAuditDiff: true });
     setCurrentUserId("user-admin");
     window.localStorage.setItem(SESSION_KEY, "user-admin");
-  }, [commit]);
+  }, [commit, currentUserId]);
 
   const value = useMemo<ProductionDataContextValue>(
     () => ({

@@ -1,8 +1,8 @@
 {
   "name": "controle-producao-terceirizada-v5",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
-  "description": "Demonstração para talões, referências, operações, preços por par, usuários e apontamentos de produção terceirizada.",
+  "description": "Controle de produção terceirizada com auditoria, permissões e base de migração para PostgreSQL/Supabase.",
   "engines": {
     "node": "22.x"
   },
@@ -10,7 +10,9 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev:codespaces": "next dev --hostname 0.0.0.0",
+    "check": "npm run typecheck && npm run build"
   },
   "dependencies": {
     "clsx": "2.1.1",
