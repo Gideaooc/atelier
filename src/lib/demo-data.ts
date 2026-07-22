@@ -16,7 +16,8 @@ export type PermissionArea =
   | "references.route"
   | "users.list"
   | "users.form"
-  | "users.permissions";
+  | "users.permissions"
+  | "audit.logs";
 
 export type AccessMode = "view" | "edit";
 
@@ -31,10 +32,11 @@ export type PermissionRegionDefinition = {
   key: PermissionArea;
   label: string;
   description: string;
+  readOnly?: boolean;
 };
 
 export type PermissionMenuDefinition = {
-  key: "dashboard" | "booklets" | "production" | "cadastros" | "users";
+  key: "dashboard" | "booklets" | "production" | "cadastros" | "users" | "audit";
   label: string;
   description: string;
   regions: PermissionRegionDefinition[];
@@ -94,6 +96,19 @@ export const permissionMenus: PermissionMenuDefinition[] = [
       { key: "users.permissions", label: "Permissões", description: "Acesso por menu e região" },
     ],
   },
+  {
+    key: "audit",
+    label: "Auditoria",
+    description: "Rastreabilidade das alterações realizadas",
+    regions: [
+      {
+        key: "audit.logs",
+        label: "Logs do sistema",
+        description: "Consulta de acessos, cadastros, edições, exclusões e apontamentos",
+        readOnly: true,
+      },
+    ],
+  },
 ];
 
 export const permissionAreas = permissionMenus.flatMap((menu) =>
@@ -150,17 +165,77 @@ export type Completion = {
   notes: string;
 };
 
+export type AuditModule =
+  | "AUTH"
+  | "OPERATIONS"
+  | "REFERENCES"
+  | "BOOKLETS"
+  | "PRODUCTION"
+  | "USERS"
+  | "SYSTEM";
+
+export type AuditAction =
+  | "LOGIN"
+  | "LOGOUT"
+  | "CREATE"
+  | "UPDATE"
+  | "DELETE"
+  | "STATUS_CHANGE"
+  | "REORDER"
+  | "COMPLETE"
+  | "RESET";
+
+export type AuditPayload = Record<string, unknown> | null;
+
+export type AuditLog = {
+  id: string;
+  actorUserId: string | null;
+  actorName: string;
+  action: AuditAction;
+  module: AuditModule;
+  entityType: string;
+  entityId: string | null;
+  entityLabel: string;
+  description: string;
+  before: AuditPayload;
+  after: AuditPayload;
+  createdAt: string;
+};
+
 export type ProductionState = {
   users: UserAccount[];
   operations: Operation[];
   references: ProductReference[];
   booklets: Booklet[];
   completions: Completion[];
+  auditLogs: AuditLog[];
 };
 
 export const roleLabels: Record<UserRole, string> = {
   ADMIN: "Administrador",
   USER: "Usuário",
+};
+
+export const auditModuleLabels: Record<AuditModule, string> = {
+  AUTH: "Acesso",
+  OPERATIONS: "Operações",
+  REFERENCES: "Referências",
+  BOOKLETS: "Talões",
+  PRODUCTION: "Produção",
+  USERS: "Usuários",
+  SYSTEM: "Sistema",
+};
+
+export const auditActionLabels: Record<AuditAction, string> = {
+  LOGIN: "Login",
+  LOGOUT: "Logout",
+  CREATE: "Criação",
+  UPDATE: "Alteração",
+  DELETE: "Exclusão",
+  STATUS_CHANGE: "Mudança de status",
+  REORDER: "Reordenação",
+  COMPLETE: "Pares concluídos",
+  RESET: "Restauração",
 };
 
 const allPermissionKeys = permissionMenus.flatMap((menu) => menu.regions.map((region) => region.key));
@@ -173,7 +248,10 @@ export function createEmptyPermissions(): PermissionMap {
 
 export function createAdminPermissions(): PermissionMap {
   return Object.fromEntries(
-    allPermissionKeys.map((key) => [key, { view: true, edit: true }]),
+    allPermissionKeys.map((key) => [
+      key,
+      { view: true, edit: key !== "audit.logs" },
+    ]),
   ) as PermissionMap;
 }
 
@@ -301,6 +379,22 @@ export const initialProductionState: ProductionState = {
       quantity: 40,
       completedAt: "2026-07-15T17:20:00.000Z",
       notes: "",
+    },
+  ],
+  auditLogs: [
+    {
+      id: "audit-demo-start",
+      actorUserId: null,
+      actorName: "Sistema",
+      action: "CREATE",
+      module: "SYSTEM",
+      entityType: "demo",
+      entityId: null,
+      entityLabel: "Ambiente de demonstração",
+      description: "Dados iniciais da demonstração foram carregados.",
+      before: null,
+      after: { version: "0.6.0", storage: "localStorage" },
+      createdAt: "2026-07-15T08:00:00.000Z",
     },
   ],
 };
